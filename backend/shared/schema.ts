@@ -250,15 +250,15 @@ export const userBadgesRelations = relations(userBadges, ({ one }) => ({
 // === ZOD SCHEMAS & TYPES ===
 // Insert schemas: used for request validation (omit auto-generated fields).
 // Select types: used for API response typing on both frontend and backend.
-export const insertAccountSchema = createInsertSchema(accounts).omit({ id: true, createdAt: true });
-export const insertTransactionSchema = createInsertSchema(transactions).omit({ id: true, createdAt: true });
-export const insertGoalSchema = createInsertSchema(goals).omit({ id: true, createdAt: true });
-export const insertLiabilitySchema = createInsertSchema(liabilities).omit({ id: true, createdAt: true });
+export const insertAccountSchema = createInsertSchema(accounts);
+export const insertTransactionSchema = createInsertSchema(transactions);
+export const insertGoalSchema = createInsertSchema(goals);
+export const insertLiabilitySchema = createInsertSchema(liabilities);
 export const insertUserProfileSchema = createInsertSchema(userProfiles);
-export const insertCustomCategorySchema = createInsertSchema(customCategories).omit({ id: true, createdAt: true });
-export const insertDailyFocusSchema = createInsertSchema(dailyFocus).omit({ id: true, createdAt: true });
-export const insertBadgeSchema = createInsertSchema(badges).omit({ id: true });
-export const insertUserBadgeSchema = createInsertSchema(userBadges).omit({ id: true });
+export const insertCustomCategorySchema = createInsertSchema(customCategories);
+export const insertDailyFocusSchema = createInsertSchema(dailyFocus);
+export const insertBadgeSchema = createInsertSchema(badges);
+export const insertUserBadgeSchema = createInsertSchema(userBadges);
 
 export type Account = typeof accounts.$inferSelect;
 export type InsertAccount = z.infer<typeof insertAccountSchema>;

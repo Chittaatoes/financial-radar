@@ -5,6 +5,18 @@ import path from "path";
 export default defineConfig({
   plugins: [react()],
 
+  server: {
+    host: "0.0.0.0",
+    port: 5000,
+    allowedHosts: "all",
+    proxy: {
+      "/api": {
+        target: "http://localhost:5001",
+        changeOrigin: true,
+      },
+    },
+  },
+
   resolve: {
     dedupe: ["react", "react-dom", "react/jsx-runtime"],
     alias: {
@@ -12,7 +24,6 @@ export default defineConfig({
       "@shared": path.resolve(__dirname, "../shared"),
       "@assets": path.resolve(__dirname, "../attached_assets"),
 
-      // 🔥 PENTING: resolve react dari root node_modules
       react: path.resolve(__dirname, "../node_modules/react"),
       "react-dom": path.resolve(__dirname, "../node_modules/react-dom"),
     },

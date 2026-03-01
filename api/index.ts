@@ -3,8 +3,8 @@ import express, { type Request, type Response, type NextFunction } from "express
 import cors from "cors";
 import { createServer } from "http";
 import serverless from "serverless-http";
-import { registerRoutes } from "../backend/src/routes/index.js";
-import { requestLogger } from "../backend/src/middleware/logger.js";
+import { registerRoutes } from "../backend/src/routes/index";
+import { requestLogger } from "../backend/src/middleware/logger";
 
 const app = express();
 app.set("trust proxy", 1);

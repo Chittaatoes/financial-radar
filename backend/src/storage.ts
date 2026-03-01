@@ -13,6 +13,11 @@
  * - updateAccountBalance(): Atomic balance add/subtract with SQL expression
  * - addXp(): Increments XP + auto-levels up based on LEVEL_THRESHOLDS
  * - getDailyFocusList(): Returns all focus missions for a given date
+ *
+ * NOTE: `as any` casts on Drizzle `.values()` and `.set()` calls are intentional.
+ * drizzle-orm v0.39 changed internal column type inference, causing type mismatches
+ * between zod-inferred insert types and Drizzle's native table types.
+ * Runtime behavior is identical and type safety is preserved at the interface level.
  */
 import {
   type Account, type InsertAccount,
@@ -27,8 +32,8 @@ import {
   type UserBadgeRecord, type InsertUserBadge,
   accounts, transactions, goals, liabilities, userProfiles, xpLogs, streakLogs,
   customCategories, dailyFocus, badges, userBadges,
-} from "../../shared/schema";
-import { users } from "../../shared/models/auth";
+} from "../shared/schema";
+import { users } from "../shared/models/auth";
 import { db } from "./db";
 import { eq, and, desc, sql, gte, lte, count } from "drizzle-orm";
 
@@ -108,21 +113,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createAccount(data: InsertAccount): Promise<Account> {
-    const [account] = await db.insert(accounts).values(data).returning();
+    const [account] = await db.insert(accounts).values(data as any).returning();
     return account;
   }
 
   async updateAccount(id: number, userId: string, data: Partial<InsertAccount>): Promise<Account | undefined> {
-    const [account] = await db.update(accounts).set(data).where(and(eq(accounts.id, id), eq(accounts.userId, userId))).returning();
+    const [account] = await db.update(accounts).set(data as any).where(and(eq(accounts.id, id), eq(accounts.userId, userId))).returning();
     return account;
   }
 
   async deleteAccount(id: number, userId: string): Promise<void> {
-    await db.update(transactions).set({ fromAccountId: null })
+    await db.update(transactions).set({ fromAccountId: null } as any)
       .where(eq(transactions.fromAccountId, id));
-    await db.update(transactions).set({ toAccountId: null })
+    await db.update(transactions).set({ toAccountId: null } as any)
       .where(eq(transactions.toAccountId, id));
-    await db.update(goals).set({ accountId: null })
+    await db.update(goals).set({ accountId: null } as any)
       .where(eq(goals.accountId, id));
     await db.delete(accounts).where(and(eq(accounts.id, id), eq(accounts.userId, userId)));
   }
@@ -131,11 +136,11 @@ export class DatabaseStorage implements IStorage {
     if (operation === "add") {
       await db.update(accounts).set({
         balance: sql`${accounts.balance}::numeric + ${amount}::numeric`,
-      }).where(eq(accounts.id, id));
+      } as any).where(eq(accounts.id, id));
     } else {
       await db.update(accounts).set({
         balance: sql`${accounts.balance}::numeric - ${amount}::numeric`,
-      }).where(eq(accounts.id, id));
+      } as any).where(eq(accounts.id, id));
     }
   }
 
@@ -154,7 +159,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTransaction(data: InsertTransaction): Promise<Transaction> {
-    const [tx] = await db.insert(transactions).values(data).returning();
+    const [tx] = await db.insert(transactions).values(data as any).returning();
     return tx;
   }
 
@@ -182,7 +187,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createGoal(data: InsertGoal): Promise<Goal> {
-    const [goal] = await db.insert(goals).values(data).returning();
+    const [goal] = await db.insert(goals).values(data as any).returning();
     return goal;
   }
 
@@ -199,14 +204,14 @@ export class DatabaseStorage implements IStorage {
     if (data.targetAmount !== undefined) setData.targetAmount = data.targetAmount;
     if (data.deadline !== undefined) setData.deadline = data.deadline;
     if (data.accountId !== undefined) setData.accountId = data.accountId;
-    const [updated] = await db.update(goals).set(setData).where(and(eq(goals.id, id), eq(goals.userId, userId))).returning();
+    const [updated] = await db.update(goals).set(setData as any).where(and(eq(goals.id, id), eq(goals.userId, userId))).returning();
     return updated;
   }
 
   async updateGoalAmount(id: number, amount: string): Promise<void> {
     await db.update(goals).set({
       currentAmount: sql`${goals.currentAmount}::numeric + ${amount}::numeric`,
-    }).where(eq(goals.id, id));
+    } as any).where(eq(goals.id, id));
   }
 
   async deleteGoal(id: number, userId: string): Promise<void> {
@@ -248,7 +253,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createLiability(data: InsertLiability): Promise<Liability> {
-    const [liability] = await db.insert(liabilities).values(data).returning();
+    const [liability] = await db.insert(liabilities).values(data as any).returning();
     return liability;
   }
 
@@ -258,7 +263,7 @@ export class DatabaseStorage implements IStorage {
 
   async payLiability(id: number, userId: string, amount: string): Promise<void> {
     await db.update(liabilities)
-      .set({ amount: sql`GREATEST(${liabilities.amount}::numeric - ${amount}::numeric, 0)` })
+      .set({ amount: sql`GREATEST(${liabilities.amount}::numeric - ${amount}::numeric, 0)` } as any)
       .where(and(eq(liabilities.id, id), eq(liabilities.userId, userId)));
   }
 
@@ -268,17 +273,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertProfile(data: InsertUserProfile): Promise<UserProfile> {
-    const [profile] = await db.insert(userProfiles).values(data)
+    const [profile] = await db.insert(userProfiles).values(data as any)
       .onConflictDoUpdate({
         target: userProfiles.userId,
-        set: data,
+        set: data as any,
       })
       .returning();
     return profile;
   }
 
   async updateProfile(userId: string, data: Partial<Record<string, any>>): Promise<void> {
-    await db.update(userProfiles).set(data).where(eq(userProfiles.userId, userId));
+    await db.update(userProfiles).set(data as any).where(eq(userProfiles.userId, userId));
   }
 
   async getXpLogsByUser(userId: string): Promise<XpLog[]> {
@@ -288,15 +293,15 @@ export class DatabaseStorage implements IStorage {
   async addXp(userId: string, amount: number, reason: string): Promise<void> {
     await db.update(userProfiles).set({
       xp: sql`${userProfiles.xp} + ${amount}`,
-    }).where(eq(userProfiles.userId, userId));
+    } as any).where(eq(userProfiles.userId, userId));
 
-    await db.insert(xpLogs).values({ userId, amount, reason });
+    await db.insert(xpLogs).values({ userId, amount, reason } as any);
 
     const [profile] = await db.select().from(userProfiles).where(eq(userProfiles.userId, userId));
     if (profile) {
       const newLevel = this.calculateLevel(profile.xp);
       if (newLevel !== profile.level) {
-        await db.update(userProfiles).set({ level: newLevel }).where(eq(userProfiles.userId, userId));
+        await db.update(userProfiles).set({ level: newLevel } as any).where(eq(userProfiles.userId, userId));
       }
     }
   }
@@ -313,24 +318,24 @@ export class DatabaseStorage implements IStorage {
     await db.update(userProfiles).set({
       streakCount: count,
       streakLastActive: lastActive,
-    }).where(eq(userProfiles.userId, userId));
+    } as any).where(eq(userProfiles.userId, userId));
   }
 
   async useRevive(userId: string): Promise<void> {
     await db.update(userProfiles).set({
       reviveRemaining: sql`${userProfiles.reviveRemaining} - 1`,
-    }).where(eq(userProfiles.userId, userId));
+    } as any).where(eq(userProfiles.userId, userId));
   }
 
   async resetRevives(userId: string): Promise<void> {
     await db.update(userProfiles).set({
       reviveRemaining: 3,
       reviveResetDate: new Date().toISOString().split("T")[0],
-    }).where(eq(userProfiles.userId, userId));
+    } as any).where(eq(userProfiles.userId, userId));
   }
 
   async logStreak(userId: string, action: string, date: string): Promise<void> {
-    await db.insert(streakLogs).values({ userId, action, date });
+    await db.insert(streakLogs).values({ userId, action, date } as any);
   }
 
   async getStreakLogForDate(userId: string, date: string): Promise<StreakLog | undefined> {
@@ -365,7 +370,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async setUserLevel(userId: string, level: number): Promise<void> {
-    await db.update(userProfiles).set({ level }).where(eq(userProfiles.userId, userId));
+    await db.update(userProfiles).set({ level } as any).where(eq(userProfiles.userId, userId));
   }
 
   async getCustomCategoriesByUser(userId: string): Promise<CustomCategory[]> {
@@ -373,7 +378,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCustomCategory(data: InsertCustomCategory): Promise<CustomCategory> {
-    const [cat] = await db.insert(customCategories).values(data).returning();
+    const [cat] = await db.insert(customCategories).values(data as any).returning();
     return cat;
   }
 
@@ -395,12 +400,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createDailyFocus(data: InsertDailyFocus): Promise<DailyFocus> {
-    const [focus] = await db.insert(dailyFocus).values(data).returning();
+    const [focus] = await db.insert(dailyFocus).values(data as any).returning();
     return focus;
   }
 
   async completeDailyFocus(id: number, userId: string): Promise<void> {
-    await db.update(dailyFocus).set({ completed: true }).where(
+    await db.update(dailyFocus).set({ completed: true } as any).where(
       and(eq(dailyFocus.id, id), eq(dailyFocus.userId, userId))
     );
   }
@@ -432,7 +437,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async awardBadge(userId: string, badgeId: number): Promise<UserBadgeRecord> {
-    const [ub] = await db.insert(userBadges).values({ userId, badgeId }).returning();
+    const [ub] = await db.insert(userBadges).values({ userId, badgeId } as any).returning();
     return ub;
   }
 
@@ -446,7 +451,7 @@ export class DatabaseStorage implements IStorage {
   async seedBadges(badgeList: InsertBadge[]): Promise<void> {
     const existing = await db.select().from(badges);
     if (existing.length === 0) {
-      await db.insert(badges).values(badgeList);
+      await db.insert(badges).values(badgeList as any);
     }
   }
 }

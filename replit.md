@@ -204,22 +204,27 @@ Financial Radar is a habit-driven personal finance web application. It helps use
 - `/api/guest-login` — Create guest account
 - `/api/admin/*` — Admin-only routes (user management)
 
-## Development Setup
+## Development Setup (Replit)
 - **Dev command:** `npm run dev` runs backend (port 5001) and frontend (port 5000) concurrently
 - **Vite proxy:** Frontend proxies `/api` requests to backend at `http://localhost:5001`
 - **Public port:** 5000 (Vite dev server, publicly accessible on Replit)
-- **Frontend API URL:** Empty string (same-origin via Vite proxy in dev, same domain on Vercel)
-- **Backend entry (dev):** `backend/src/index.ts` — Express with `app.listen()`
-- **Backend entry (Vercel):** `api/index.ts` — Express wrapped with `serverless-http`, no `app.listen()`
+- **Frontend host:** `0.0.0.0` with `allowedHosts: "all"` for Replit proxy compatibility
+- **Frontend API URL:** Empty string (same-origin via Vite proxy in dev)
+- **Backend entry:** `backend/src/index.ts` — Express with `app.listen()` on port 5001
+- **Database:** Replit-provisioned PostgreSQL (DATABASE_URL env var)
+- **Schema push:** `npm run db:push` (drizzle-kit)
 
-## Deployment (Vercel — Single Project)
-- **Single Vercel project** hosts both frontend (static) and backend (serverless)
-- `api/index.ts` wraps Express with `serverless-http` — no `app.listen()`
-- `vercel.json` routes `/api/*` to the serverless function, everything else to frontend SPA
-- **No CORS needed** in production (frontend and API on same domain)
-- **Env vars on Vercel:** `DATABASE_URL`, `SESSION_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `APP_URL`, `NODE_ENV=production`
-- **NOT needed on Vercel:** `FRONTEND_URL`, `VITE_API_URL`, `PORT` (same domain)
-- See `MASTER_DEPLOYMENT_GUIDE.txt` for complete step-by-step
+## Import Path Notes
+- `backend/src/*.ts` imports `../shared/` (relative to `backend/src/`)
+- `backend/src/routes/index.ts` imports `../../shared/` (relative to `backend/src/routes/`)
+- `backend/src/auth/index.ts` imports `../../shared/` (relative to `backend/src/auth/`)
+- `api/index.ts` imports from `../backend/src/routes/index` (no .js extension)
+
+## TypeScript Fixes Applied
+- `backend/shared/schema.ts`: Removed `.omit()` from all `createInsertSchema()` calls — drizzle-zod v0.7.1 auto-excludes generated/defaulted columns; calling `.omit({ id: true })` caused "Type 'true' is not assignable to type 'never'"
+- `backend/src/storage.ts`: Added `as any` casts on Drizzle `.values()` and `.set()` calls — drizzle-orm v0.39 changed internal column type inference, causing Zod-inferred types to mismatch with native Drizzle table types; runtime behavior is identical
+- `backend/src/routes/index.ts`: Added `getParamId(req)` helper for typed `req.params.id` extraction; fixed admin route `req.params.userId` destructuring — @types/express@5 makes params ambiguous
+- `api/index.ts`: Removed `.js` extensions from TypeScript imports
 
 ## Authentication
 - **Google OAuth2:** Session-based (no JWT). Requires `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `APP_URL`

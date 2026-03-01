@@ -123,6 +123,10 @@ export async function registerRoutes(
   }
   // === GOOGLE AUTH END ===
 
+  function getParamId(req: any): number {
+    return parseInt(req.params.id as string);
+  }
+
 
 
   // === HELPER: Create profile on first login, or return existing ===
@@ -361,7 +365,7 @@ export async function registerRoutes(
   app.patch("/api/accounts/:id", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const id = parseInt(req.params.id);
+      const id = getParamId(req);
       const { name, type, balance } = req.body;
       const updated = await storage.updateAccount(id, userId, {
         name,
@@ -379,7 +383,7 @@ export async function registerRoutes(
   app.delete("/api/accounts/:id", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const id = parseInt(req.params.id);
+      const id = getParamId(req);
       await storage.deleteAccount(id, userId);
       res.json({ success: true });
     } catch (error) {
@@ -393,7 +397,7 @@ export async function registerRoutes(
   app.delete("/api/transactions/:id", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const id = parseInt(req.params.id);
+      const id = getParamId(req);
       const tx = await storage.getTransaction(id, userId);
       if (!tx) return res.status(404).json({ message: "Transaction not found" });
 
@@ -565,7 +569,7 @@ app.post("/api/transactions", isAuthenticated, async (req, res) => {
   app.patch("/api/goals/:id", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const id = parseInt(req.params.id);
+      const id = getParamId(req);
       const goal = await storage.getGoal(id, userId);
       if (!goal) return res.status(404).json({ message: "Goal not found" });
       const updateSchema = z.object({
@@ -587,7 +591,7 @@ app.post("/api/transactions", isAuthenticated, async (req, res) => {
   app.delete("/api/goals/:id", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const id = parseInt(req.params.id);
+      const id = getParamId(req);
       const goal = await storage.getGoal(id, userId);
       if (!goal) return res.status(404).json({ message: "Goal not found" });
       await storage.deleteGoal(id, userId);
@@ -601,7 +605,7 @@ app.post("/api/transactions", isAuthenticated, async (req, res) => {
   app.post("/api/goals/:id/deposit", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const id = parseInt(req.params.id);
+      const id = getParamId(req);
       const { amount, fromAccountId } = req.body;
 
       const goal = await storage.getGoal(id, userId);
@@ -643,7 +647,7 @@ app.post("/api/transactions", isAuthenticated, async (req, res) => {
   app.get("/api/goals/:id/history", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const id = parseInt(req.params.id);
+      const id = getParamId(req);
       const goal = await storage.getGoal(id, userId);
       if (!goal) return res.status(404).json({ message: "Goal not found" });
       const allTx = await storage.getTransactionsByUser(userId);
@@ -746,7 +750,7 @@ app.post("/api/transactions", isAuthenticated, async (req, res) => {
   app.post("/api/liabilities/:id/pay", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const id = parseInt(req.params.id);
+      const id = getParamId(req);
       const { amount, fromAccountId } = req.body;
 
       if (!amount || parseFloat(String(amount)) <= 0) {
@@ -788,7 +792,7 @@ app.post("/api/transactions", isAuthenticated, async (req, res) => {
   app.delete("/api/liabilities/:id", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const id = parseInt(req.params.id);
+      const id = getParamId(req);
       await storage.deleteLiability(id, userId);
       res.json({ success: true });
     } catch (error) {
@@ -1186,7 +1190,7 @@ app.post("/api/transactions", isAuthenticated, async (req, res) => {
 
   app.patch("/api/admin/users/:userId/role", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const { userId } = req.params;
+      const userId = req.params.userId as string;
       const { role } = req.body;
       const currentUserId = getUserId(req);
 
@@ -1218,7 +1222,7 @@ app.post("/api/transactions", isAuthenticated, async (req, res) => {
 
   app.patch("/api/admin/users/:userId/level", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const { userId } = req.params;
+      const userId = req.params.userId as string;
       const { level } = req.body;
 
       if (!level || level < 1 || level > 10) {
@@ -1285,7 +1289,7 @@ app.post("/api/transactions", isAuthenticated, async (req, res) => {
   app.delete("/api/custom-categories/:id", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const id = parseInt(req.params.id);
+      const id = getParamId(req);
       await storage.deleteCustomCategory(id, userId);
       res.json({ success: true });
     } catch (error) {
