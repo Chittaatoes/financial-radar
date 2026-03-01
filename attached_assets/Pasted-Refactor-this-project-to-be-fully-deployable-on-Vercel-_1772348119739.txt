@@ -1,0 +1,140 @@
+Refactor this project to be fully deployable on Vercel (Frontend + Backend) 
+WITHOUT changing any existing business logic, database schema, routes, or authentication logic.
+
+IMPORTANT RULES:
+- Do NOT change any finance logic.
+- Do NOT modify database schema.
+- Do NOT modify Supabase connection logic.
+- Do NOT rewrite Google OAuth logic.
+- Only restructure for Vercel compatibility.
+- Keep session + cookie authentication.
+- Keep PostgreSQL session store.
+- Keep Drizzle ORM.
+- Keep Supabase as the database.
+
+GOAL:
+Make this project fully deployable on Vercel only (no Render).
+
+---------------------------------------
+TARGET STRUCTURE
+---------------------------------------
+
+/
+├── api/
+│   └── index.ts        ← Express app exported as serverless handler
+├── client/             ← Frontend (unchanged logic)
+├── server/             ← Keep logic files here
+├── shared/             ← Keep shared schema
+├── package.json
+├── vercel.json
+└── tsconfig.json
+
+---------------------------------------
+BACKEND REFACTOR INSTRUCTIONS
+---------------------------------------
+
+1. DO NOT use app.listen().
+2. Move Express setup into api/index.ts.
+3. Use serverless-http to wrap Express.
+
+api/index.ts should:
+
+- Create express app
+- Apply all middleware (cors, json, session, etc)
+- Register all routes from server/
+- Export default serverless(app)
+
+Example structure (adapt to current code):
+
+import express from "express";
+import serverless from "serverless-http";
+import { registerRoutes } from "../server/routes";
+
+const app = express();
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+
+// keep session config exactly as is
+// keep Google OAuth config exactly as is
+// keep Supabase db config exactly as is
+
+registerRoutes(app);
+
+export default serverless(app);
+
+4. Remove any app.listen() usage.
+5. Ensure session cookies work in serverless context.
+
+---------------------------------------
+GOOGLE AUTH REQUIREMENTS
+---------------------------------------
+
+- Keep Google OAuth.
+- Update callback URL to:
+  https://YOUR_VERCEL_DOMAIN/api/auth/callback
+- Ensure session cookie config:
+
+cookie: {
+  secure: true,
+  httpOnly: true,
+  sameSite: "none"
+}
+
+---------------------------------------
+DATABASE
+---------------------------------------
+
+- Keep Supabase connection.
+- Do not change DATABASE_URL usage.
+- Keep Drizzle schema intact.
+- Keep shared schema untouched.
+
+---------------------------------------
+FRONTEND
+---------------------------------------
+
+- Keep frontend unchanged.
+- Ensure frontend API calls use:
+
+const API_URL = "/api";
+
+- Remove any hardcoded backend URLs.
+
+---------------------------------------
+VERCEL CONFIG
+---------------------------------------
+
+Create vercel.json:
+
+{
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index.ts" },
+    { "source": "/(.*)", "destination": "/client/index.html" }
+  ]
+}
+
+---------------------------------------
+DEPENDENCIES
+---------------------------------------
+
+Install:
+- serverless-http
+
+Do not remove any existing dependencies.
+
+---------------------------------------
+FINAL CHECKLIST
+---------------------------------------
+
+✔ No app.listen()
+✔ Express exported as serverless function
+✔ Google auth still works
+✔ Supabase still works
+✔ Session + cookie still works
+✔ Frontend calls /api
+✔ Ready for single Vercel deployment
+
+Do not simplify logic.
+Do not remove features.
+Only restructure for Vercel compatibility.

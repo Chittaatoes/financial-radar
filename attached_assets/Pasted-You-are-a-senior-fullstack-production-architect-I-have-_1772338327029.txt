@@ -1,0 +1,193 @@
+You are a senior fullstack production architect.
+
+I have a monorepo project called "financial-radar".
+
+Your job is to:
+
+1. Fully audit the entire repository.
+2. Refactor it into a production-ready monorepo.
+3. Remove ALL legacy Replit integrations.
+4. Remove Vite coupling from backend.
+5. Split package.json into frontend and backend.
+6. Prepare it for:
+   - Frontend → Vercel
+   - Backend → Render
+   - Database → Supabase PostgreSQL
+   - Auth → Google OAuth using openid-client
+   - Session-based authentication (NO JWT)
+
+================================================================
+CURRENT STRUCTURE
+================================================================
+
+financial-radar/
+├── backend/
+│   ├── auth.ts
+│   ├── db.ts
+│   ├── index.ts
+│   ├── routes.ts
+│   ├── static.ts
+│   ├── storage.ts
+│   ├── vite.ts
+│   └── replit_integrations/
+│
+├── frontend/
+│   ├── index.html
+│   └── src/
+│
+├── shared/
+├── script/
+├── drizzle.config.ts
+├── vite.config.ts
+├── tailwind.config.ts
+├── tsconfig.json
+├── package.json
+└── .env
+
+================================================================
+GOALS
+================================================================
+
+### 1️⃣ CLEAN STRUCTURE
+
+Restructure to:
+
+financial-radar/
+│
+├── frontend/              (Vercel deploy)
+│   ├── src/
+│   ├── index.html
+│   ├── package.json
+│   ├── vite.config.ts
+│   └── .env.example
+│
+├── backend/               (Render deploy)
+│   ├── src/
+│   │   ├── auth/
+│   │   ├── routes/
+│   │   ├── middleware/
+│   │   └── index.ts
+│   ├── drizzle/
+│   ├── package.json
+│   └── .env.example
+│
+├── shared/
+├── MASTER_DEPLOYMENT_GUIDE.txt
+├── drizzle.config.ts
+└── README.md
+
+Remove:
+- backend/vite.ts
+- backend/static.ts
+- backend/replit_integrations/
+- migration guides
+- changelog
+- old deployment guides
+
+================================================================
+2️⃣ AUTH SYSTEM (MANDATORY)
+================================================================
+
+Use:
+- express-session
+- connect-pg-simple
+- openid-client (Google OAuth)
+- PostgreSQL (Supabase)
+
+DO NOT USE JWT.
+
+Session must:
+- Use httpOnly cookie
+- secure: true in production
+- sameSite: "none"
+- stored in PostgreSQL
+- properly destroyed on logout
+
+Frontend must:
+- use credentials: "include"
+- never store tokens
+- use /api/me endpoint to check auth
+
+================================================================
+3️⃣ CORS CONFIG
+================================================================
+
+Backend must:
+- Allow FRONTEND_URL
+- credentials: true
+- Proper production-safe config
+
+================================================================
+4️⃣ ENV VARIABLES
+================================================================
+
+Generate .env.example for:
+
+Backend:
+- NODE_ENV
+- PORT
+- DATABASE_URL
+- SESSION_SECRET
+- FRONTEND_URL
+- GOOGLE_CLIENT_ID
+- GOOGLE_CLIENT_SECRET
+- GOOGLE_CALLBACK_URL
+
+Frontend:
+- VITE_API_URL
+
+================================================================
+5️⃣ BUILD & DEPLOY CONFIG
+================================================================
+
+Prepare:
+- backend build script
+- frontend build script
+- Render configuration steps
+- Vercel configuration steps
+- Supabase setup steps
+- Google OAuth setup steps
+- Production cookie explanation
+- CORS explanation
+
+================================================================
+6️⃣ MASTER_DEPLOYMENT_GUIDE.txt
+================================================================
+
+Generate ONE single file containing:
+
+- Final folder structure
+- How auth works
+- Env setup
+- Supabase setup
+- Google OAuth setup
+- Render deployment steps
+- Vercel deployment steps
+- Local development steps
+- Production checklist
+- Common errors & fixes
+- Future scaling notes
+
+This file must be extremely clear and production-grade.
+It should allow anyone to deploy the project correctly.
+
+================================================================
+IMPORTANT
+================================================================
+
+- Remove ALL Replit logic.
+- Remove Vite integration from backend.
+- Ensure backend does NOT serve frontend.
+- Ensure frontend and backend are fully independent.
+- Keep shared types working.
+- Use best production practices.
+- Optimize for security and scalability.
+
+Return:
+1. Refactored structure
+2. Required code adjustments
+3. New package.json for frontend
+4. New package.json for backend
+5. MASTER_DEPLOYMENT_GUIDE.txt content
+6. Deployment instructions
+7. Security notes

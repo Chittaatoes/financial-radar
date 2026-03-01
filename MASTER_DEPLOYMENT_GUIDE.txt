@@ -1,0 +1,593 @@
+================================================================================
+  FINANCIAL RADAR — MASTER DEPLOYMENT GUIDE
+  Last updated: March 2026
+================================================================================
+
+TABLE OF CONTENTS
+─────────────────
+1. Project Overview
+2. Complete Folder Structure
+3. How Authentication Works
+4. Environment Variables (Vercel)
+5. Database Setup (Supabase)
+6. Google Cloud Console Setup
+7. Vercel Deployment (Frontend + Backend)
+8. Local Development Setup
+9. Production Checklist
+10. Common Errors & Fixes
+11. Security Notes
+
+================================================================================
+1. PROJECT OVERVIEW
+================================================================================
+
+Financial Radar is a habit-driven personal finance web app with gamification
+features (XP, Levels, Streaks, Finance Score), supporting Indonesian users.
+
+Architecture:
+  - Frontend: React 18 + Vite 7 (SPA)         → Vercel static files
+  - Backend:  Express.js 5 (serverless)        → Vercel serverless function
+  - Database: PostgreSQL + Drizzle ORM         → Supabase
+  - Auth:     Google OAuth 2.0 (session-based, no JWT)
+  - Session:  PostgreSQL via connect-pg-simple
+
+Everything deploys to a SINGLE Vercel project. The backend runs as a
+serverless function at /api/*, and the frontend is served as static files.
+Both share the same domain — no CORS issues in production.
+
+================================================================================
+2. COMPLETE FOLDER STRUCTURE
+================================================================================
+
+financial-radar/
+│
+├── api/
+│   └── index.ts                          # Serverless Express handler (Vercel)
+│                                         #   - Wraps Express with serverless-http
+│                                         #   - NO app.listen() — Vercel invokes it
+│                                         #   - Lazy-initializes routes on first call
+│
+├── frontend/                             # React SPA (Vite)
+│   ├── index.html                        # HTML entry point
+│   ├── public/
+│   │   ├── favicon.png
+│   │   └── sounds/                       # Sound effect audio files
+│   ├── src/
+│   │   ├── App.tsx                       # Auth-gated routing, onboarding flow
+│   │   ├── main.tsx                      # React entry point (renders App)
+│   │   ├── index.css                     # Tailwind base + theme CSS variables
+│   │   │
+│   │   ├── components/
+│   │   │   ├── app-sidebar.tsx           # Desktop navigation sidebar
+│   │   │   ├── mobile-nav.tsx            # Mobile bottom nav (5 tabs)
+│   │   │   ├── mobile-fab.tsx            # Floating action button
+│   │   │   ├── add-action.tsx            # Shared add-action logic
+│   │   │   ├── add-action-desktop.tsx    # Desktop add-action UI
+│   │   │   ├── add-action-mobile.tsx     # Mobile add-action UI
+│   │   │   ├── setup-first-account-modal.tsx
+│   │   │   ├── profile-author-footer.tsx # Author credit footer
+│   │   │   ├── theme-provider.tsx        # Dark/light theme context
+│   │   │   ├── theme-toggle.tsx          # Theme switch button
+│   │   │   └── ui/                       # 40+ Shadcn UI components
+│   │   │       ├── accordion.tsx
+│   │   │       ├── alert-dialog.tsx
+│   │   │       ├── alert.tsx
+│   │   │       ├── avatar.tsx
+│   │   │       ├── badge.tsx
+│   │   │       ├── button.tsx
+│   │   │       ├── calendar.tsx
+│   │   │       ├── card.tsx
+│   │   │       ├── chart.tsx
+│   │   │       ├── currency-input.tsx    # IDR currency format input
+│   │   │       ├── dialog.tsx
+│   │   │       ├── drawer.tsx
+│   │   │       ├── dropdown-menu.tsx
+│   │   │       ├── form.tsx
+│   │   │       ├── input.tsx
+│   │   │       ├── popover.tsx
+│   │   │       ├── progress.tsx
+│   │   │       ├── scroll-area.tsx
+│   │   │       ├── select.tsx
+│   │   │       ├── separator.tsx
+│   │   │       ├── sheet.tsx
+│   │   │       ├── sidebar.tsx
+│   │   │       ├── skeleton.tsx
+│   │   │       ├── slider.tsx
+│   │   │       ├── switch.tsx
+│   │   │       ├── table.tsx
+│   │   │       ├── tabs.tsx
+│   │   │       ├── textarea.tsx
+│   │   │       ├── toast.tsx
+│   │   │       ├── toaster.tsx
+│   │   │       ├── tooltip.tsx
+│   │   │       └── ... (more components)
+│   │   │
+│   │   ├── features/
+│   │   │   ├── onboarding/
+│   │   │   │   └── onboarding.tsx        # 3-slide onboarding + login
+│   │   │   ├── score/
+│   │   │   │   ├── score-page.tsx        # Full Finance Score page
+│   │   │   │   ├── score-ring.tsx        # Animated circular ring
+│   │   │   │   └── score-widget.tsx      # Dashboard compact widget
+│   │   │   └── gamification/
+│   │   │       ├── xp-chip.tsx           # XP gain popup animation
+│   │   │       ├── milestone-flame.tsx   # Streak flame (7 levels)
+│   │   │       └── level-up-celebration.tsx
+│   │   │
+│   │   ├── hooks/
+│   │   │   ├── use-auth.ts              # Google Auth + guest login
+│   │   │   ├── use-mobile.tsx           # Mobile viewport detection
+│   │   │   ├── use-sound.ts            # Web Audio API sounds
+│   │   │   └── use-toast.ts            # Toast notifications
+│   │   │
+│   │   ├── lib/
+│   │   │   ├── api.ts                   # API_URL = VITE_API_URL || ""
+│   │   │   ├── queryClient.ts           # TanStack Query + apiRequest
+│   │   │   ├── constants.ts             # XP thresholds, categories
+│   │   │   ├── auth-utils.ts            # Auth error handling
+│   │   │   ├── i18n.tsx                 # EN/ID translations
+│   │   │   └── utils.ts                # cn() Tailwind merge
+│   │   │
+│   │   └── pages/
+│   │       ├── landing.tsx              # Landing (unauthenticated)
+│   │       ├── dashboard.tsx            # Main dashboard + score ring
+│   │       ├── accounts.tsx             # Account CRUD
+│   │       ├── transactions.tsx         # Transaction management
+│   │       ├── goals.tsx                # Smart Save goals
+│   │       ├── debt-health.tsx          # Debt ratio (Level 5+)
+│   │       ├── net-worth.tsx            # Net worth (Level 7+)
+│   │       ├── weekly-insight.tsx       # Weekly spending insight
+│   │       ├── achievements.tsx         # Badges gallery
+│   │       ├── profile.tsx              # Profile hub (mobile-first)
+│   │       ├── admin.tsx                # Admin panel
+│   │       └── not-found.tsx            # 404 page
+│   │
+│   ├── vite.config.ts                   # Vite config + /api proxy → :5001
+│   ├── tailwind.config.ts               # Tailwind theme
+│   ├── postcss.config.js                # PostCSS
+│   ├── components.json                  # Shadcn CLI config
+│   ├── package.json                     # Frontend deps
+│   └── .env.example                     # VITE_API_URL
+│
+├── backend/                             # Express API source
+│   ├── src/
+│   │   ├── index.ts                     # Dev entry (app.listen on PORT)
+│   │   ├── auth/
+│   │   │   └── index.ts                 # Google OAuth2 + sessions
+│   │   │                                #   - setupAuth(app): session + routes
+│   │   │                                #   - isAuthenticated middleware
+│   │   │                                #   - isAdmin middleware
+│   │   ├── routes/
+│   │   │   └── index.ts                 # All API routes (~1650 lines)
+│   │   │                                #   - registerRoutes(httpServer, app)
+│   │   │                                #   - 17 route groups (/api/*)
+│   │   ├── middleware/
+│   │   │   └── logger.ts                # Request logging
+│   │   ├── storage.ts                   # Drizzle ORM data access layer
+│   │   └── db.ts                        # pg Pool + Drizzle (SSL in prod)
+│   ├── tsconfig.json
+│   ├── package.json                     # Backend deps (reference)
+│   └── .env.example                     # All env var examples
+│
+├── shared/                              # Shared TS types & Drizzle schemas
+│   ├── schema.ts                        # All tables + Zod insert schemas
+│   │                                    #   accounts, transactions, goals,
+│   │                                    #   liabilities, userProfiles, xpLogs,
+│   │                                    #   streakLogs, customCategories,
+│   │                                    #   dailyFocus, badges, userBadges
+│   └── models/
+│       └── auth.ts                      # users + sessions tables
+│
+├── attached_assets/                     # Uploaded images, audio, text
+│   ├── Financial_Radar_*.png            # App logo
+│   ├── favicon_*.png                    # Favicon source
+│   └── koiroylers-awesome-level-up-*.mp3  # Level-up sound
+│
+├── script/
+│   └── build.ts                         # Replit deployment build (esbuild)
+│
+├── vercel.json                          # Vercel routing + build config
+├── drizzle.config.ts                    # Drizzle Kit (schema push)
+├── package.json                         # Root: scripts + ALL dependencies
+├── package-lock.json                    # Lockfile
+├── tsconfig.json                        # Root TS config
+├── MASTER_DEPLOYMENT_GUIDE.txt          # This file
+└── replit.md                            # Project documentation
+
+Key Architecture Points:
+  - api/index.ts       → Used by Vercel (serverless, no app.listen)
+  - backend/src/index.ts → Used for local dev (has app.listen)
+  - Both import the SAME routes, auth, storage, and DB modules
+  - shared/ is used by both frontend (type imports) and backend (runtime)
+
+================================================================================
+3. HOW AUTHENTICATION WORKS
+================================================================================
+
+Flow (Google OAuth):
+  1. User clicks "Sign in" → frontend navigates to GET /api/login
+  2. Backend constructs Google OAuth URL using APP_URL for redirect URI
+  3. User authenticates with Google
+  4. Google redirects to GET /api/auth/callback/google?code=...
+  5. Backend exchanges code for access token via Google token endpoint
+  6. Backend fetches user info from Google userinfo API
+  7. Backend upserts user in `users` table (creates if new)
+  8. Backend saves user object to Express session (stored in PostgreSQL)
+  9. Backend redirects to FRONTEND_URL or "/" (same domain on Vercel)
+
+Flow (Guest Login):
+  1. User clicks "Start as Guest" during onboarding
+  2. Frontend POSTs to /api/guest-login
+  3. Backend creates user with UUID id, isGuest=true
+  4. Backend saves user to session
+  5. Guest can later upgrade to Google account
+
+Session Details:
+  - Sessions stored in PostgreSQL via `connect-pg-simple`
+  - Table `sessions` auto-created on first request
+  - Cookie settings in production:
+    - secure: true (HTTPS required — Vercel provides this)
+    - httpOnly: true (not accessible via JavaScript)
+    - sameSite: "none" (required for serverless function context)
+  - Cookie settings in development:
+    - secure: false
+    - sameSite: "lax"
+  - Rolling sessions: expiration resets on every request
+  - No JWT — the session cookie is the sole auth mechanism
+
+Auth Endpoints:
+  GET  /api/login                → Redirect to Google OAuth
+  GET  /api/auth/callback/google → OAuth callback (exchanges code)
+  GET  /api/auth/user            → Returns current user (or 401)
+  GET  /api/logout               → Destroys session, redirects to /
+  POST /api/auth/logout          → Destroys session, returns JSON { ok: true }
+  POST /api/guest-login          → Creates guest user + session
+
+Auth Middleware:
+  - isAuthenticated — Requires valid session (returns 401 if not)
+  - isAdmin — Requires session + user.role === "admin" (returns 403 if not)
+
+Super Admin:
+  - If SUPER_ADMIN_EMAIL is set, the first user with that email
+    automatically gets role="admin" on their first login.
+
+================================================================================
+4. ENVIRONMENT VARIABLES (VERCEL)
+================================================================================
+
+Set these in Vercel Dashboard → Project → Settings → Environment Variables:
+
+Required:
+  DATABASE_URL=postgresql://user:pass@host:6543/postgres
+    → Supabase connection string (use "Transaction" mode pooler, port 6543)
+
+  SESSION_SECRET=<random-string-32-chars-minimum>
+    → Used to sign session cookies
+    → Generate with: openssl rand -base64 32
+
+  GOOGLE_CLIENT_ID=<from-google-cloud-console>
+    → OAuth 2.0 Client ID
+
+  GOOGLE_CLIENT_SECRET=<from-google-cloud-console>
+    → OAuth 2.0 Client Secret
+
+  APP_URL=https://your-project.vercel.app
+    → Your Vercel deployment URL (used for OAuth redirect URI)
+    → Must match EXACTLY what's in Google Cloud Console
+    → No trailing slash
+
+  NODE_ENV=production
+    → Enables production cookie settings and SSL
+
+Optional:
+  SUPER_ADMIN_EMAIL=you@gmail.com
+    → First user with this email auto-gets admin role
+
+NOT needed on Vercel (same domain — defaults work correctly):
+  FRONTEND_URL  → defaults to "" → redirects to "/" (same domain)
+  VITE_API_URL  → defaults to "" → same-origin API calls
+  PORT          → Vercel manages this for serverless functions
+
+================================================================================
+5. DATABASE SETUP (SUPABASE)
+================================================================================
+
+1. Create a Supabase project at https://supabase.com
+2. Go to Project Settings → Database → Connection string
+3. Select "Transaction" mode (port 6543)
+4. Copy the connection string:
+   Format: postgresql://postgres.[ref]:[password]@[host]:6543/postgres
+5. Set this as DATABASE_URL in Vercel environment variables
+
+Push Schema (from your local machine or Replit):
+  DATABASE_URL="your-supabase-url" npx drizzle-kit push
+
+  This creates all tables defined in:
+    - shared/schema.ts (accounts, transactions, goals, liabilities,
+      userProfiles, xpLogs, streakLogs, customCategories, dailyFocus,
+      badges, userBadges)
+    - shared/models/auth.ts (users)
+  The `sessions` table is auto-created by connect-pg-simple on first request.
+
+Important:
+  - Do NOT change primary key column types after initial push
+  - Use `npx drizzle-kit push --force` if you get migration conflicts
+  - Supabase free tier: 500MB database, 2 projects
+  - Use "Transaction" mode pooler (port 6543) not "Session" mode
+
+================================================================================
+6. GOOGLE CLOUD CONSOLE SETUP
+================================================================================
+
+1. Go to https://console.cloud.google.com
+2. Create a new project (or select existing)
+3. Enable "Google+ API" or "People API" (for userinfo endpoint)
+4. Navigate to APIs & Services → Credentials
+5. Click "Create Credentials" → "OAuth 2.0 Client ID"
+6. Application type: Web application
+
+7. Add Authorized JavaScript Origins:
+   - https://your-project.vercel.app        (production)
+   - http://localhost:5000                   (local dev frontend)
+   - http://localhost:5001                   (local dev backend)
+   - Your Replit public URL                  (Replit dev)
+
+8. Add Authorized Redirect URIs:
+   - https://your-project.vercel.app/api/auth/callback/google   (production)
+   - http://localhost:5001/api/auth/callback/google              (local dev)
+   - {Your Replit URL}/api/auth/callback/google                  (Replit dev)
+
+9. Copy Client ID and Client Secret
+10. Set as GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET on Vercel
+
+OAuth Consent Screen:
+  - User Type: External
+  - App name: Financial Radar
+  - Scopes: openid, email, profile
+  - Add test users while app is in "Testing" mode
+  - Submit for Google verification when ready for production
+    (required if >100 users)
+
+================================================================================
+7. VERCEL DEPLOYMENT (FRONTEND + BACKEND)
+================================================================================
+
+Step-by-Step:
+
+  1. Push your code to GitHub
+
+  2. Go to https://vercel.com → "Add New Project"
+
+  3. Import your GitHub repository
+
+  4. Configure project settings:
+     - Framework Preset: Other (not Vite — we use custom vercel.json)
+     - Root Directory: ./ (repository root)
+     - Build Command: cd frontend && npm install && npx vite build
+     - Output Directory: frontend/dist
+     - Node.js Version: 20.x
+
+  5. Add environment variables (see Section 4):
+     - DATABASE_URL        = (your Supabase Transaction URL)
+     - SESSION_SECRET       = (random 32+ char string)
+     - GOOGLE_CLIENT_ID     = (from Google Cloud Console)
+     - GOOGLE_CLIENT_SECRET = (from Google Cloud Console)
+     - APP_URL              = https://your-project.vercel.app
+     - NODE_ENV             = production
+
+  6. Click Deploy
+
+How It Works:
+  - vercel.json routes /api/* requests to api/index.ts (serverless function)
+  - api/index.ts creates an Express app, wraps it with serverless-http
+  - On first invocation, Express initializes (auth, routes, DB connection)
+  - Subsequent invocations reuse the initialized app (warm start)
+  - All non-API routes serve the built frontend SPA
+  - Frontend and API share the same domain — no CORS issues
+
+Serverless Function Details:
+  - Runtime: Node.js 20
+  - Max duration: 30 seconds (configured in vercel.json)
+  - Cold start: ~1-3 seconds (DB connection + route init)
+  - Warm requests: <100ms typically
+
+Post-Deploy:
+  1. Note your Vercel URL (e.g., https://financial-radar.vercel.app)
+  2. Verify APP_URL in Vercel env vars matches this URL exactly
+  3. Ensure Google Cloud Console redirect URI matches:
+     https://your-project.vercel.app/api/auth/callback/google
+  4. Push your database schema:
+     DATABASE_URL="..." npx drizzle-kit push
+  5. Visit your Vercel URL and test the full flow
+
+Custom Domain (Optional):
+  - Add your domain in Vercel → Project Settings → Domains
+  - Update APP_URL env var to the custom domain (https://yourdomain.com)
+  - Update Google Cloud Console authorized origins and redirect URIs
+  - Redeploy for changes to take effect
+
+Redeployment:
+  - Push to your GitHub main branch → Vercel auto-deploys
+  - Or trigger manual deploy from Vercel dashboard
+  - Environment variable changes require a new deployment
+
+================================================================================
+8. LOCAL DEVELOPMENT SETUP
+================================================================================
+
+Prerequisites:
+  - Node.js 20+
+  - PostgreSQL database (local or Supabase)
+  - Google OAuth credentials (see Section 6)
+
+Steps:
+  1. Clone the repository:
+       git clone <repo-url> && cd financial-radar
+
+  2. Install dependencies:
+       npm install                    # Root dependencies (backend + shared)
+       cd frontend && npm install     # Frontend dependencies
+       cd ..
+
+  3. Set environment variables (create .env in root or export):
+       export DATABASE_URL=postgresql://...
+       export SESSION_SECRET=dev-secret-financial-radar
+       export GOOGLE_CLIENT_ID=...
+       export GOOGLE_CLIENT_SECRET=...
+       export APP_URL=http://localhost:5001
+
+  4. Push the database schema:
+       npx drizzle-kit push
+
+  5. Start development:
+       npm run dev                    # Starts both frontend + backend
+
+     Frontend: http://localhost:5000  (Vite dev server)
+     Backend:  http://localhost:5001  (Express with app.listen)
+
+  The Vite dev server proxies /api/* requests to the backend at port 5001.
+  In local dev, backend/src/index.ts is used (with app.listen).
+
+Available npm Scripts (root):
+  npm run dev           — Start both frontend + backend (concurrently)
+  npm run dev:backend   — Start backend only (port 5001)
+  npm run dev:frontend  — Start frontend only (port 5000)
+  npm run build:frontend — Build frontend for production
+  npm run vercel-build  — Build frontend (used by Vercel)
+  npm run db:push       — Push Drizzle schema to database
+
+On Replit:
+  The workflow "Start application" runs `npm run dev`.
+  Port 5000 (Vite) is exposed as the public URL.
+  Port 5001 (backend) is proxied through Vite's /api proxy.
+  Set APP_URL to your Replit public URL for OAuth to work.
+
+================================================================================
+9. PRODUCTION CHECKLIST
+================================================================================
+
+Database:
+  [ ] DATABASE_URL points to Supabase (Transaction mode pooler, port 6543)
+  [ ] Database schema pushed: npx drizzle-kit push
+  [ ] Sessions table auto-creates on first request
+
+Auth:
+  [ ] GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET set on Vercel
+  [ ] APP_URL matches Vercel URL exactly (https://, no trailing slash)
+  [ ] Google Console redirect URI: {APP_URL}/api/auth/callback/google
+  [ ] Google Console authorized origins include Vercel URL
+  [ ] OAuth consent screen configured
+  [ ] SESSION_SECRET is strong random string (32+ chars)
+
+Deployment:
+  [ ] NODE_ENV=production set on Vercel
+  [ ] Build command: cd frontend && npm install && npx vite build
+  [ ] Output directory: frontend/dist
+  [ ] Framework preset: Other
+
+Testing:
+  [ ] Visit Vercel URL — landing page loads
+  [ ] Google login flow works end-to-end
+  [ ] Guest login works
+  [ ] Session persists across page reloads
+  [ ] /api/auth/user returns user data after login
+  [ ] Dashboard loads with data after login
+  [ ] Transactions can be created
+  [ ] Sound effects play (if enabled)
+  [ ] Dark mode toggle works
+  [ ] Language toggle (EN/ID) works
+
+================================================================================
+10. COMMON ERRORS & FIXES
+================================================================================
+
+Error: "401 Unauthorized" on /api/auth/user
+  → User is not logged in (expected on first visit / landing page)
+  → After login, check that the session cookie is being set
+  → Check browser DevTools → Application → Cookies
+
+Error: "Session not persisting after login"
+  → Verify DATABASE_URL is correct (sessions are stored in PostgreSQL)
+  → Check that connect-pg-simple can connect to Supabase
+  → Verify cookie config: secure=true, sameSite="none" in production
+  → Ensure APP_URL uses https:// (required for secure cookies)
+
+Error: "Google OAuth redirect_uri_mismatch"
+  → The redirect URI in Google Console must EXACTLY match:
+    {APP_URL}/api/auth/callback/google
+  → Include the protocol (https://) and no trailing slash
+  → The APP_URL env var on Vercel must match Google Console entry
+  → Check for extra spaces or newlines in the env var value
+
+Error: "relation 'users' does not exist"
+  → Database schema not pushed yet
+  → Run: DATABASE_URL="..." npx drizzle-kit push
+  → Verify the connection string is for the correct database
+
+Error: "FUNCTION_INVOCATION_TIMEOUT" on Vercel
+  → Serverless functions timeout at 10s (free) / 60s (Pro) / 30s (configured)
+  → Check if Supabase is slow to respond (region mismatch?)
+  → Consider upgrading Vercel plan or optimizing queries
+  → Check for N+1 query issues in routes
+
+Error: "Cannot find module" in Vercel build / runtime
+  → Ensure all backend dependencies are in ROOT package.json
+  → Vercel installs from root package.json, NOT backend/package.json
+  → Run `npm install` locally to verify all deps resolve
+
+Error: Frontend shows blank page on Vercel
+  → Check that vercel.json has the SPA rewrite: /(.*) → /index.html
+  → Verify build output exists in frontend/dist/
+  → Check Vercel build logs for errors
+  → Verify frontend/index.html references correct script paths
+
+Error: Cold start latency (1-3 seconds on first API call)
+  → Normal for serverless — function spins up on first request
+  → Subsequent requests are fast while function is warm
+  → Functions stay warm for ~5-15 minutes after last request
+  → Consider Vercel Pro for faster cold starts
+
+Error: "CORS: origin ... not allowed"
+  → Only happens if FRONTEND_URL is set and doesn't match the request origin
+  → On Vercel (same domain): do NOT set FRONTEND_URL
+  → For cross-origin setups: set FRONTEND_URL to the exact frontend URL
+
+Error: "SSL connection required" or database connection errors
+  → In production (NODE_ENV=production), SSL is auto-enabled
+  → Supabase requires SSL for external connections
+  → Check that DATABASE_URL is the pooler URL (port 6543), not direct (5432)
+
+================================================================================
+11. SECURITY NOTES
+================================================================================
+
+Authentication & Sessions:
+  - Session-based auth with PostgreSQL store (no JWT)
+  - Session cookies: httpOnly (no JS access) + secure (HTTPS only)
+  - sameSite: "none" in production for serverless compatibility
+  - SESSION_SECRET must be unique per environment (32+ chars)
+  - Rolling sessions: expiration resets on each request
+
+Data Protection:
+  - Google Client Secret stored server-side only (never in frontend)
+  - All API input validated with Zod schemas
+  - SQL injection prevented by Drizzle ORM (parameterized queries)
+  - Environment variables never committed to version control
+
+Network Security:
+  - Vercel provides HTTPS automatically (all traffic encrypted)
+  - No CORS needed in production (frontend + API on same domain)
+  - Trust proxy enabled for correct IP detection behind Vercel
+
+Recommendations for Production:
+  - Add express-rate-limit to prevent API abuse
+  - Add CSRF protection for session-based auth
+  - Set up Supabase Row Level Security (RLS) as defense-in-depth
+  - Enable Vercel's DDoS protection (automatic on Pro)
+  - Monitor Vercel function logs for suspicious activity
+  - Rotate SESSION_SECRET periodically
+  - Review Google OAuth consent screen annually
+
+================================================================================
+  END OF DEPLOYMENT GUIDE
+================================================================================
