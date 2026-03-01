@@ -25,7 +25,6 @@
  * - checkFocusCompletion(): Auto-checks if a daily focus mission is done
  */
 import type { Express } from "express";
-import { createServer, type Server } from "http";
 
 import { storage } from "../storage";
 import { setupAuth, isAuthenticated, isAdmin } from "../auth";
@@ -108,9 +107,8 @@ const BADGE_SEED_DATA = [
 ];
 
 export async function registerRoutes(
-  httpServer: Server,
   app: Express
-): Promise<Server> {
+): Promise<void> {
   await setupAuth(app);
 // registerAuthRoutes sudah tidak dipakai
 
@@ -1651,5 +1649,4 @@ app.post("/api/transactions", isAuthenticated, async (req, res) => {
     }
   });
 
-  return httpServer;
 }
