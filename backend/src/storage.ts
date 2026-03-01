@@ -27,9 +27,9 @@ import {
   type UserBadgeRecord, type InsertUserBadge,
   accounts, transactions, goals, liabilities, userProfiles, xpLogs, streakLogs,
   customCategories, dailyFocus, badges, userBadges,
-} from "../../shared/schema";
-import { users } from "../../shared/models/auth";
-import { db } from "./db";
+} from "../../shared/schema.js";
+import { users } from "../../shared/models/auth.js";
+import { db } from "./db.js";
 import { eq, and, desc, sql, gte, lte, count } from "drizzle-orm";
 
 // === STORAGE INTERFACE ===
