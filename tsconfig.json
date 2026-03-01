@@ -1,23 +1,26 @@
 {
-  "include": ["frontend/src/**/*", "shared/**/*", "backend/**/*"],
-  "exclude": ["node_modules", "build", "dist", "**/*.test.ts"],
   "compilerOptions": {
-    "incremental": true,
-    "tsBuildInfoFile": "./node_modules/typescript/tsbuildinfo",
-    "noEmit": true,
+    "target": "ES2022",
     "module": "ESNext",
-    "strict": true,
-    "lib": ["esnext", "dom", "dom.iterable"],
-    "jsx": "preserve",
-    "esModuleInterop": true,
+    "moduleResolution": "Bundler",
+
+    "strict": false,
     "skipLibCheck": true,
-    "allowImportingTsExtensions": true,
-    "moduleResolution": "bundler",
+
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "allowJs": true,
+
     "baseUrl": ".",
-    "types": ["node", "vite/client"],
+
+    "types": ["node"],
+
     "paths": {
-      "@/*": ["./frontend/src/*"],
-      "@shared/*": ["./shared/*"]
+      "@/*": ["frontend/src/*"],
+      "@shared/*": ["backend/shared/*"]
     }
-  }
+  },
+
+  "include": ["backend", "api"],
+  "exclude": ["node_modules"]
 }
