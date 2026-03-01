@@ -26,12 +26,12 @@
  */
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "../storage";
-import { setupAuth, isAuthenticated, isAdmin } from "../auth";
+import { storage } from "../storage.js";
+import { setupAuth, isAuthenticated, isAdmin } from "../auth.js";
 import { format, subDays, startOfWeek, endOfWeek, subWeeks, startOfMonth, endOfMonth, subMonths, parseISO } from "date-fns";
 import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
-import { db } from "../db";
+import { db } from "../db.js";
 import { users } from "../../../shared/models/auth";
 import { userProfiles } from "../../../shared/schema";
 import { eq, sql, count } from "drizzle-orm";
