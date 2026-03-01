@@ -32,8 +32,10 @@ import { format, subDays, startOfWeek, endOfWeek, subWeeks, startOfMonth, endOfM
 import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { db } from "../db.js";
-import { users } from "../../../shared/models/auth";
-import { userProfiles } from "../../../shared/schema";
+
+import { users } from "../shared/models/auth.js";
+import { userProfiles } from "../shared/schema.js";
+
 import { eq, sql, count } from "drizzle-orm";
 
 // === REQUEST VALIDATION SCHEMAS ===
