@@ -3,20 +3,7 @@ import react from "@vitejs/plugin-react";
 import path from "path";
 
 export default defineConfig({
-  root: __dirname,
   plugins: [react()],
-
-  server: {
-    host: "0.0.0.0",
-    port: 5000,
-    allowedHosts: true,
-    proxy: {
-      "/api": {
-        target: "http://localhost:5001",
-        changeOrigin: true,
-      },
-    },
-  },
 
   resolve: {
     dedupe: ["react", "react-dom", "react/jsx-runtime"],
@@ -24,8 +11,10 @@ export default defineConfig({
       "@": path.resolve(__dirname, "src"),
       "@shared": path.resolve(__dirname, "../shared"),
       "@assets": path.resolve(__dirname, "../attached_assets"),
-      "react": path.resolve(__dirname, "node_modules/react"),
-      "react-dom": path.resolve(__dirname, "node_modules/react-dom"),
+
+      // 🔥 PENTING: resolve react dari root node_modules
+      react: path.resolve(__dirname, "../node_modules/react"),
+      "react-dom": path.resolve(__dirname, "../node_modules/react-dom"),
     },
   },
 
