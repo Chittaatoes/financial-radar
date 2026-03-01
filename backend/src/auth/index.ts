@@ -13,7 +13,7 @@ export async function setupAuth(app: Express) {
   const sessionStore = new PgSession({
     pool,
     tableName: "sessions",
-    createTableIfMissing: true,
+    createTableIfMissing: false,
   });
 
   app.use(
