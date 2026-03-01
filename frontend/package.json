@@ -49,7 +49,7 @@
     "wouter": "^3.9.0",
     "zod": "^3.25.76"
   },
-  "devDependencies": {
+  "dependencies": {
     "@vitejs/plugin-react": "^4.7.0",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.47",
