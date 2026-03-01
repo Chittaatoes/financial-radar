@@ -39,7 +39,7 @@ let isInitialized = false;
 async function ensureInitialized() {
   if (isInitialized) return;
   const httpServer = createServer(app);
-  await registerRoutes(httpServer, app);
+  await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
