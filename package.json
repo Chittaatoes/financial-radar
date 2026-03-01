@@ -8,7 +8,7 @@
     "dev:backend": "cross-env NODE_ENV=development PORT=5001 tsx backend/src/index.ts",
     "start:backend": "cross-env NODE_ENV=production tsx backend/src/index.ts",
     "dev:frontend": "cd frontend && vite",
-    "build:frontend": "vite build frontend",
+    "build:frontend": "vite build --config frontend/vite.config.ts",
     "vercel-build": "cd frontend && npm install && npx vite build",
     "db:push": "drizzle-kit push"
   },
